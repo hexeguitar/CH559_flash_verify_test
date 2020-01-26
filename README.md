@@ -19,7 +19,7 @@ generates an array of size 12000 populated with random 8bit values.
 4. Script will also write a log file showing all the addresses where the verify failed, including the chip reply and the sent data packet.  
 The errors (are they errors or maybe just another status reply?) appear to be 56bytes spaced. Exactly the flash data packe size.  
 
-[write.log][pic1]
+![write.log][pic1]
 
 
 
