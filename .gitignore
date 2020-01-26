@@ -50,3 +50,17 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# SDCC
+*.adb
+*.hex
+*.lst
+*.map
+*.asm
+*.ihx
+*.lk
+*.mem
+*.rel
+*.rst
+*.sym
+

@@ -11,12 +11,12 @@ sdcc main.rel -V -mmcs51 --std-sdcc11 --model-large --xram-size $xram_size --xra
 sdobjcopy -I ihex -O binary $project_name.ihx $project_name.bin
 python3 scripts/print_bin_size.py -i $project_name.bin
 
-rm $project_name.lk
-rm $project_name.map
-rm $project_name.mem
-rm $project_name.ihx
-
+rm *.lk
+rm *.map
+rm *.mem
+rm *.ihx
 rm *.asm
+rm *.map
 rm *.lst
 rm *.rel
 rm *.rst
