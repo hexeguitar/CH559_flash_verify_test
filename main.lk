@@ -1,0 +1,21 @@
+-muwx
+-i main.ihx
+-M
+-Y
+-X 0x0800
+-C 0xefff
+-b HOME = 0x0000
+-b XSEG = 0x0600
+-b PSEG = 0x0600
+-b ISEG = 0x0000
+-b BSEG = 0x0000
+-k /home/pio/Software/SoftDev/sdcc/3.9.5/bin/../share/sdcc/lib/large
+-k /usr/local/share/sdcc/lib/large
+-l mcs51
+-l libsdcc
+-l libint
+-l liblong
+-l libfloat
+main.rel
+
+-e
