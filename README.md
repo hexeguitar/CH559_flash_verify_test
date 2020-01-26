@@ -25,7 +25,7 @@ The errors (are they errors or maybe just another status reply?) appear to be 56
 
 
 
-[pic1]: https://github.com/hexeguitar/CH559_flash_verify_test/blob/master/ch55x_flash3.png
+[pic1]: ch55x_flash3.png
 
 
 
