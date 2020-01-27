@@ -225,25 +225,28 @@ def writefilev2(fileName, mode):
             buffer = sendcmd(outbuffer)
             if buffer != None:
                 if buffer[4] != 0x00 and buffer[4] != 0xfe:
-                    print("Verify failed at " + '0x{:>04x}'.format(curr_addr) + ' i='+'0x{:>04x}'.format(i)+' : '+' : '.join('{:02x}'.format(x) for x in buffer), end=' ', file=log_file)
-                    print("Packet: "+':'.join('{:02x}'.format(x) for x in outbuffer), file=log_file)
                     if mode == mode_write_v2:
                         print('Write Failed!!!', file=log_file)
                         errorexit('Write Failed!!!')
                     elif mode == mode_verify_v2:
-                        pass            # let it run to see where the verify fails
+                        print("Verify failed at " + '0x{:>04x}'.format(curr_addr) + ' i='+'0x{:>04x}'.format(i)+' : '+' : '.join('{:02x}'.format(x) for x in buffer), end=' ', file=log_file)
+                        print("Packet: "+':'.join('{:02x}'.format(x) for x in outbuffer), file=log_file)
+                        print("Verify failed at " + '0x{:>04x}'.format(curr_addr) + ' i='+'0x{:>04x}'.format(i)+' : '+' : '.join('{:02x}'.format(x) for x in buffer))
+                        # let it run to see where the verify fails          
                         #errorexit('Verify Failed!!!')
                 # it looks that the 0xF5 reply starts from address 11256 (0x2bf8), so lets print out one packet befor that address for comparison
-                if curr_addr == (11256-56):
+                if curr_addr == (11256-56) and mode == mode_verify_v2:
                     print("Verify OK at     " + '0x{:>04x}'.format(curr_addr) + ' i='+'0x{:>04x}'.format(i)+' : '+' : '.join('{:02x}'.format(x) for x in buffer), end=' ', file=log_file)
                     print("Packet: "+':'.join('{:02x}'.format(x) for x in outbuffer), file=log_file)
+                    print("Verify OK at     " + '0x{:>04x}'.format(curr_addr) + ' i='+'0x{:>04x}'.format(i)+' : '+' : '.join('{:02x}'.format(x) for x in buffer))
 
             curr_addr += pkt_length
             i -= pkt_length
         if mode == mode_write_v2:
             print('Writing success')
         elif mode == mode_verify_v2:
-            print('Verify success')
+            pass
+            # print('Verify success')
     
 if len(sys.argv) != 2:
     errorexit('no bin file selected')   

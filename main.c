@@ -1,52 +1,84 @@
-typedef unsigned char *PUINT8;
-typedef unsigned char __xdata *PUINT8X;
-typedef const unsigned char __code *PUINT8C;
-typedef unsigned char __xdata UINT8X;
-typedef unsigned char  __data             UINT8D;
-
 #ifndef FREQ_SYS
 #define	FREQ_SYS	48000000
 #endif 
 
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
+#include "sdcc_int.h"
+#include <stdint.h>
+#include "vscode_sdcc.h"
 #include "CH559.h"
+#include "gpio.h"
 #include "rndata.h"
+// 4 leds on the electrodragon board, P14-P17
+#define USE_EDRG_LEDS   
+
+const uint8_t clrscr[]="\x1b[2J";
 
 void initClock();
+
 void delayUs(unsigned short n);
 void delay(unsigned short n);
 void initUART0(unsigned long baud, int alt);
-int putchar(int c);
-int getchar();
+void printStr(const uint8_t txt[]);
 
 typedef void(* __data FunctionReference)();
 FunctionReference runBootloader = (FunctionReference)0xF400;
 
+#ifdef USE_EDRG_LEDS
+    PORT_PIN(LED_1, 1, 4)
+    PORT_PIN(LED_2, 1, 5)
+    PORT_PIN(LED_3, 1, 6)
+    PORT_PIN(LED_4, 1, 7)
+    void initLeds();
+    void setLeds(uint8_t value);
+#endif
+
+// -------------------------------------------------------------
 void main()
 {
+    char buf[32];
+
     initClock();
-    initUART0(115200, 1);
-    
-    printf("CH559 test\r\n");
+#ifdef USE_EDRG_LEDS
+        initLeds();
+#endif 
+    initUART0(115200, 0);   // TX on P3.1
+    delay(10);
+    printf(clrscr);
+
     uint16_t data_l = sizeof(data);
+
+    printf("array size = %d bytes\r\n", data_l);
+    const uint8_t txt[] = "1. printf(const uint8_t[]); // works! \r\n";
+    printStr(txt);
+    sprintf(buf, "%s", "2. sprintf works!\r\n");    
+    printf(buf);
+    printf("3. printf(\"string\"); // works!\r\n");
+
     uint8_t i;
+    printf("\r\nlast 8 bytes of the data array:\r\n");
     for (i=0; i<8; i++)
     {
-        uint16_t idx = data_l - i -1 ;
+        uint16_t idx = data_l-8+i;
         printf("rndata[%d] = %d\r\n", idx, data[idx]);
     }
 
     delay(100);
-    runBootloader();
 
+    runBootloader();    // just go back to bootloader
 
     while(1)
     {
+        if(!(P4_IN & (1 << 6)))
+            runBootloader();
+#ifdef USE_EDRG_LEDS
+        setLeds(i++);
+#endif 
+        delay(1000);
     }
 }
-
+// -------------------------------------------------------------
 void initClock()
 {
     SAFE_MOD = 0x55;
@@ -60,23 +92,51 @@ void initClock()
 
 	delay(7);
 }
+// -------------------------------------------------------------
+#ifdef USE_EDRG_LEDS
+void initLeds()
+{
+    pin_LED_1_out();
+    pin_LED_2_out();
+    pin_LED_3_out();
+    pin_LED_4_out();
 
+    LED_1 = 0;
+    LED_2 = 0;
+    LED_3 = 0;
+    LED_4 = 0;
+}
+
+void setLeds(uint8_t value)
+{
+    LED_1 = value & (1<<0);
+    LED_2 = value & (1<<1);
+    LED_3 = value & (1<<2);
+    LED_4 = value & (1<<3);
+}
+#endif
+// -------------------------------------------------------------
 int putchar(int c)
 {
+    LED_1 = 1;
     while (!TI);
     TI = 0;
     SBUF = c & 0xFF;
     return c;
 }
-
+// -------------------------------------------------------------
 int getchar() 
 {
     while(!RI);
     RI = 0;
     return SBUF;
 }
-
-
+// -------------------------------------------------------------
+/**
+ * Initialize UART0 port with given boud rate
+ * pins: tx = P3.1 rx = P3.0
+ * alt != 0 pins: tx = P0.2 rx = P0.3
+ */
 void initUART0(unsigned long baud, int alt)
 {
 	unsigned long x;
@@ -103,8 +163,16 @@ void initUART0(unsigned long baud, int alt)
     TR1 = 1;
 	TI = 1;
 }
-
-
+// -------------------------------------------------------------
+void printStr(const uint8_t string[])
+{
+    uint16_t bufIndex = 0u;
+    while(string[bufIndex] != (uint8_t) 0)
+    {
+        putchar((uint8_t)string[bufIndex]);
+        bufIndex++;
+    }
+}
 /*******************************************************************************
 * Function Name  : delayUs(UNIT16 n)
 * Description    : us

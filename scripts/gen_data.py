@@ -56,6 +56,7 @@ def main(argv):
                 print("\n", file=out_file, end='')
         print("};\n", file=out_file)            
         print("#endif", file=out_file)
+    print("Array of " + str(length) + " bytes created in file " + out_file.name)
 
 
 if __name__ == "__main__":
