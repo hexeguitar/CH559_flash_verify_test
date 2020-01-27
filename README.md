@@ -9,9 +9,9 @@ Another python script prints out the size of the file after the compilaion is do
 ## Test procedure (linux):
 
 1. Generate the random byte array by using the following command:  
-`pytnon3 scripts/gen_data.py -l <array length> -o rndata.h`  
+`python3 scripts/gen_data.py -l <array length> -o rndata.h`  
 Example:  
-`pytnon3 scripts/gen_data.py -l 12000 -o rndata.h`  
+`python3 scripts/gen_data.py -l 12000 -o rndata.h`  
 generates an array of size 12000 populated with random 8bit values.  
 2. Run build script without any parameter to compile only:  
 `./build.sh`  
