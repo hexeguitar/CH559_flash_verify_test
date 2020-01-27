@@ -13,9 +13,10 @@ Another python script prints out the size of the file after the compilaion is do
 Example:  
 `pytnon3 scripts/gen_data.py -l 12000 -o rndata.h`  
 generates an array of size 12000 populated with random 8bit values.  
-2. Run build script:  
+2. Run build script without any parameter to compile only:  
 `./build.sh`  
-3. Script will compile the test main.c and will try to upload it to the chip using the modded chflasher.py script.
+or with -f parameter to flash the chip:  
+`./build.sh -f`  
 4. Script will also write a log file showing all the addresses where the verify failed, including the chip reply and the sent data packet.  
 
 The errors (are they errors or maybe just another status reply?) appear to be 56bytes spaced. Exactly the flash data packe size.  
