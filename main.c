@@ -9,7 +9,7 @@
 #include "vscode_sdcc.h"
 #include "CH559.h"
 #include "gpio.h"
-#include "rndata.h"
+#include "test_array.h"
 // 4 leds on the electrodragon board, P14-P17
 #define USE_EDRG_LEDS   
 
