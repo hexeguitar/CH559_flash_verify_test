@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # this short tool can flash the CH55x series with bootloader version 1.1 and 2.31
 # usage:
@@ -35,8 +35,8 @@
 # 3. Added help and info options
 # 4. Added options to detect the chip, erase or verify the flash only
 # 5. Optional usb data logging: use the option --log. It will create a
-#    new log file with all the usb operations logged.
-#    If the logger is enabled, the ship will not exit the bootloader mode.
+#    new log file with all the usb operations logged .
+#    If the logger is enabled, the chip will stay in the bootloader mode.
 #
 
 
@@ -44,7 +44,7 @@ import usb.core
 import usb.util
 import sys
 import os
-import getopt
+import argparse
 import traceback
 import platform
 from time import localtime, strftime
@@ -62,14 +62,14 @@ class CHflasher:
     }
     chip_v2 = {
         "detect_seq": (
-            0xa1, 0x12, 0x00, 0x52, 0x11, 0x4d, 0x43, 0x55, 0x20, 0x49, 0x53, 0x50, 0x20, 0x26, 0x20,
+            0xa1, 0x12, 0x00, 0x59, 0x11, 0x4d, 0x43, 0x55, 0x20, 0x49, 0x53, 0x50, 0x20, 0x26, 0x20,
             0x57, 0x43, 0x48, 0x2e, 0x43, 0x4e),
         "exit_bootloader": (0xa2, 0x01, 0x00, 0x01),
         "read_config": (0xa7, 0x02, 0x00, 0x1f, 0x00),
         "mode_write": 0xa5,
         "mode_verify": 0xa6
     }
-    txt_sep = '-----------------------------------------------------------------------------------------'
+    txt_sep = '---------------------------------------------------------------------------------'
     version = '1.01'
 
     device_erase_size = 8
@@ -77,8 +77,12 @@ class CHflasher:
     chipid = 0
     log_file = None
     bootloader_ver = None
+    xorer = 0
 
     def __init__(self):
+        pass
+
+    def __init_usb(self):
         dev = usb.core.find(idVendor=0x4348, idProduct=0x55e0)
         if dev is None:
             print('No CH55x device found, check driver please')
@@ -126,24 +130,6 @@ class CHflasher:
         if self.log_file is not None:
             self.log_file.close();
 
-    @staticmethod
-    def usage():
-        print("Usage:")
-        print("python3 chflasher.py [options] -i <inputfile.bin>")
-        print("Options:")
-        print("\t-h\t\tshow help")
-        print("\t--version\tshow version")
-        print("\t-d\t\tidentify chip")
-        print("\t-e\t\terase flash")
-        print("\t-i <input file>\tinput bin file")
-        print("\t-w\t\twrite bin file to flash")
-        print("\t-v\t\tverify the flash against the bin file")
-        print("\t--log\t\twrite diagnostic log file")
-        print("Example:")
-        print("python3 chflasher.py --log -w -i blink.bin")
-        print("will write the blink.bin file, verify it and log the usb operations")
-        print("in usb_trx.log file")
-
     @classmethod
     def show_info(cls):
         print(cls.txt_sep)
@@ -155,6 +141,26 @@ class CHflasher:
 
     def show_version(self):
         print("version " + self.version)
+
+    @staticmethod
+    def usage():
+        print("Usage:")
+        print("python3 chflasher.py [-h] [--version] [-f FILE] [-w | -v | -d | -e] [-s] [--log LOG]")
+        print("Options:")
+        print("\t-h\t\tshow help")
+        print("\t--version\tshow version")
+        print("\t--log LOG_FILE\twrite diagnostic log file")
+        print("Operations:")
+        print("\t-d\t\tidentify chip")
+        print("\t-e\t\terase flash")
+        print("\t-f FILE\tinput bin file")
+        print("\t-w\t\twrite bin file to flash")
+        print("\t-v\t\tverify the flash against the bin file")
+        print("\t-s\t\texit bootloader/start application")
+        print("Example:")
+        print("python3 chflasher.py --log usb.log -w -f blink.bin")
+        print("will write the blink.bin file, verify it and log the usb operations")
+        print("in usb.log file")
 
     def __print_buffers(self, tx, rx):
         txl = len(tx)
@@ -173,7 +179,7 @@ class CHflasher:
             msg = "ERR"
         else:
             msg = "OK "
-        print('0x{:>04x}'.format(address) + ":" + msg + ":", file=self.log_file, end='')
+        print('0x{:>04x}'.format(address) + ":" + msg + '|{:>02x}|'.format(rx[4]), file=self.log_file, end='')
         if len(rx):
             print(':'.join('{:02x}'.format(x) for x in tx), file=self.log_file)
 
@@ -232,7 +238,7 @@ class CHflasher:
             print("Starting application:", file=self.log_file)
             self.__print_buffers(self.chip_v1["exit_bootloader"], "")
 
-    def exitbootloaderv2(self):
+    def __exitbootloaderv2(self):
         self.epout.write(self.chip_v1["exit_bootloader"])
         if self.log_file is not None:
             print(self.txt_sep, file=self.log_file)
@@ -299,44 +305,48 @@ class CHflasher:
         checksum += cfganswer[25]
         for x in range(0x30):
             outbuffer[x+3] = checksum & 0xff
-        self.__sendcmd(outbuffer)
+        reply = self.__sendcmd(outbuffer)
         if self.log_file is not None:
             print(self.txt_sep, file=self.log_file)
             print("Key input:", file=self.log_file)
-            self.__print_buffers(outbuffer, '')
+            print("Checksum: " + str(hex(checksum & 0xFF)), file=self.log_file)
+            self.xorer = ((checksum + 0x52) % 256) % 256
+            print("Xorer: " + str(hex(self.xorer & 0xFF)), file=self.log_file)
+            print("ChipID = " + str(hex(self.chipid)), file=self.log_file)
+            self.__print_buffers(outbuffer, reply)
 
     def __writefilev1(self, file_name, mode):
-        with open(file_name, 'rb') as input_file:
-            bytes_to_send = os.path.getsize(bytes(input_file))
-            if mode == self.chip_v1["mode_write"]:
-                print('Filesize: '+str(bytes_to_send)+' bytes')
-            curr_addr = 0
-            pkt_length = 0
-            while curr_addr < bytes_to_send:
-                outbuffer = bytearray(64)
-                if bytes_to_send >= 0x3c:
-                    pkt_length = 0x3c
-                else:
-                    pkt_length = bytes_to_send
-                outbuffer[0] = mode
-                outbuffer[1] = pkt_length
-                outbuffer[2] = (curr_addr & 0xff)
-                outbuffer[3] = ((curr_addr >> 8) & 0xff)
-                for x in range(pkt_length):
-                    outbuffer[x+4] = input_file.seek(curr_addr+x)
-                buffer = self.__sendcmd(outbuffer)
-                curr_addr += pkt_length
-                bytes_to_send -= pkt_length
-                if buffer is not None:
-                    if buffer[0] != 0x00:
-                        if mode == self.chip_v1["mode_write"]:
-                            self.__errorexit('Write Failed!!!')
-                        elif mode == self.chip_v1["mode_verify"]:
-                            self.__errorexit('Verify Failed!!!')
-            if mode == self.chip_v1["mode_write"]:
-                print('Writing success')
-            elif mode == self.chip_v1["mode_verify"]:
-                print('Verify success')
+        input_file = list(open(file_name, 'rb').read())
+        bytes_to_send = os.path.getsize(bytes(input_file))
+        if mode == self.chip_v1["mode_write"]:
+            print('Filesize: '+str(bytes_to_send)+' bytes')
+        curr_addr = 0
+        pkt_length = 0
+        while curr_addr < bytes_to_send:
+            outbuffer = bytearray(64)
+            if bytes_to_send >= 0x3c:
+                pkt_length = 0x3c
+            else:
+                pkt_length = bytes_to_send
+            outbuffer[0] = mode
+            outbuffer[1] = pkt_length
+            outbuffer[2] = (curr_addr & 0xff)
+            outbuffer[3] = ((curr_addr >> 8) & 0xff)
+            for x in range(pkt_length):
+                outbuffer[x+4] = input_file[curr_addr+x]
+            buffer = self.__sendcmd(outbuffer)
+            curr_addr += pkt_length
+            bytes_to_send -= pkt_length
+            if buffer is not None:
+                if buffer[0] != 0x00:
+                    if mode == self.chip_v1["mode_write"]:
+                        self.__errorexit('Write Failed!!!')
+                    elif mode == self.chip_v1["mode_verify"]:
+                        self.__errorexit('Verify Failed!!!')
+        if mode == self.chip_v1["mode_write"]:
+            print('Writing success')
+        elif mode == self.chip_v1["mode_verify"]:
+            print('Verify success')
 
     def __writefilev2(self, file_name, mode):
         input_file = list(open(file_name, 'rb').read())
@@ -346,13 +356,13 @@ class CHflasher:
             if self.log_file is not None:
                 print(self.txt_sep, file=self.log_file)
                 print("Writing " + str(bytes_to_send) + " bytes to Flash.", file=self.log_file)
-                print("add=       " + '|'.join('{:02x}'.format(x) for x in range(64)),
+                print("add=          " + '|'.join('{:02x}'.format(x) for x in range(64)),
                       file=self.log_file)
         if mode == self.chip_v2["mode_verify"]:
             if self.log_file is not None:
                 print(self.txt_sep, file=self.log_file)
                 print("Veryfing " + str(bytes_to_send) + " bytes of Flash.", file=self.log_file)
-                print("add=       " + '|'.join('{:02x}'.format(x) for x in range(64)),
+                print("add=          " + '|'.join('{:02x}'.format(x) for x in range(64)),
                       file=self.log_file)
         if bytes_to_send < 256:
             self.__errorexit('Firmware bin file possibly corrupt.')
@@ -377,6 +387,7 @@ class CHflasher:
             for x in range(pkt_length+8):
                 if x % 8 == 7:
                     outbuffer[x] ^= self.chipid
+                    # outbuffer[x] ^= self.xorer
             buffer = self.__sendcmd(outbuffer)
             # --- logger ---
             if self.log_file is not None:
@@ -398,7 +409,58 @@ class CHflasher:
         elif mode == self.chip_v2["mode_verify"]:
             print('Verify success')
 
+    def __verify_rangev2(self, file_name, start, stop):
+        input_file = list(open(file_name, 'rb').read())
+        if stop < start:
+            self.__errorexit("Wrong range, stop < start!")
+
+        bytes_to_send = stop - start
+
+        if self.log_file is not None:
+            print(self.txt_sep, file=self.log_file)
+            print("Veryfing address range from" + str(start) + " to " + str(stop), file=self.log_file)
+            print("add=          " + '|'.join('{:02x}'.format(x) for x in range(64)),
+                  file=self.log_file)
+
+        curr_addr = start
+        pkt_length = 0
+        while curr_addr < bytes_to_send:
+            outbuffer = bytearray(64)
+            if bytes_to_send >= 0x38:
+                pkt_length = 0x38
+            else:
+                pkt_length = bytes_to_send
+            outbuffer[0] = self.chip_v2["mode_verify"]
+            outbuffer[1] = (pkt_length+5)
+            outbuffer[2] = 0x00
+            outbuffer[3] = (curr_addr & 0xff)
+            outbuffer[4] = ((curr_addr >> 8) & 0xff)
+            outbuffer[5] = 0x00
+            outbuffer[6] = 0x00
+            outbuffer[7] = bytes_to_send & 0xff
+            for x in range(pkt_length):
+                outbuffer[x+8] = input_file[curr_addr + x]
+            for x in range(pkt_length+8):
+                if x % 8 == 7:
+                    outbuffer[x] ^= self.chipid
+                    # outbuffer[x] ^= self.xorer
+            buffer = self.__sendcmd(outbuffer)
+            # --- logger ---
+            if self.log_file is not None:
+                self.__print_buffer_errors(outbuffer, buffer, curr_addr)
+            curr_addr += pkt_length
+            bytes_to_send -= pkt_length
+            if buffer is not None:
+                if buffer[4] != 0x00 and buffer[4] != 0xfe:
+                    # if the logger is ON, do not exit on verify fail, check all the adresses
+                    if self.log_file is not None:
+                        print("Verify failed at " + '0x{:>04x}'.format(curr_addr))
+                    else:
+                        self.__errorexit('Verify Faile at address ' + str(curr_addr))
+            print('Verify success')
+
     def write(self, firmware_bin):
+        self.__init_usb()
         bt_version = self.__detect_bootloader_ver()
         if bt_version == '1.1':
             self.__identchipv1()
@@ -413,9 +475,10 @@ class CHflasher:
             self.__writefilev2(firmware_bin, self.chip_v2["mode_write"])
             self.__writefilev2(firmware_bin, self.chip_v2["mode_verify"])
             if self.log_file is None:
-                self.exitbootloaderv2()
+                self.__exitbootloaderv2()
 
     def verify(self, firmware_bin):
+        self.__init_usb()
         bt_version = self.__detect_bootloader_ver()
         if bt_version == '1.1':
             self.__identchipv1()
@@ -426,10 +489,11 @@ class CHflasher:
             self.__identchipv2()
             self.__writefilev2(firmware_bin, self.chip_v2["mode_verify"])
             if self.log_file is None:
-                self.exitbootloaderv2()
+                self.__exitbootloaderv2()
 
     # erase: stay in bootloader mode?
     def erase(self):
+        self.__init_usb()
         bt_version = self.__detect_bootloader_ver()
         if bt_version == '1.1':
             self.__identchipv1()
@@ -439,56 +503,55 @@ class CHflasher:
             self.__erasechipv2()
 
     def detect(self):
+        self.__init_usb()
         bt_version = self.__detect_bootloader_ver()
         if bt_version == '1.1':
             self.__identchipv1()
         if bt_version == '2.3':
             self.__identchipv2()
 
+    def start_app(self):
+        self.__init_usb()
+        bt_version = self.__detect_bootloader_ver()
+        if bt_version == '1.1':
+            self.__exitbootloaderv1()
+        if bt_version == '2.3':
+            self.__exitbootloaderv2()
 
-def main(argv, flash):
-    try:
-        opts, args = getopt.getopt(argv, "hwvdei:", ["version", "log="])
-    except getopt.GetoptError as err:
-        print(err)
-        sys.exit(2)
+
+def __main(argv, flash):
+    parser = argparse.ArgumentParser(description="CH55x USB bootloader flash tool.")
+    parser.add_argument('--version',  action='store_true', help="Show version.")
+    parser.add_argument('-f', '--file', type=str, default='', help="The target file to be flashed.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-w', '--write', action='store_true', default=False, help="Write file to flash")
+    group.add_argument('-v', '--verify', action='store_true', default=False,  help="Verify flash against the provided file.")
+    group.add_argument('-d', '--detect', action='store_true', default=False, help="Detect chip and bootloader version.")
+    group.add_argument('-e', '--erase', action='store_true', default=False, help="Erase flash.")
+    parser.add_argument('-s', '--start_app', action='store_true', default=False, help="Reset and start application.")
+    parser.add_argument('--log', type=str, default=None, help="Log usb opeations to file.")
+    args = parser.parse_args()
+
     firmware_bin = None
 
-    operation = 'none'
-    for opt, arg in opts:
-        if opt == '-h':
-            flash.show_info()
-            flash.usage()
-            sys.exit()
-        elif opt in '--version':
-            flash.show_version()
-            sys.exit()
-        elif opt in '--log':
-            logfile = str(arg)
-            flash.set_logger(True, logfile)
-        elif opt in '-i':
-            firmware_bin = arg
-        elif opt in '-w':
-            operation = 'write'
-        elif opt in '-v':
-            operation = 'verify'
-        elif opt in '-r':
-            operation = 'read'
-        elif opt in '-d':
-            operation = 'detect'
-        elif opt in "-e":
-            operation = 'erase'
-        else:
-            assert False, "unhandled option"
-
-    if operation == 'write':
+    if args.version:
+        flash.show_info()
+    if args.log:
+        flash.set_logger(True, args.log)
+    if args.file:
+        firmware_bin = args.file
+    if args.write:
         flash.write(firmware_bin)
-    elif operation == 'verify':
+    if args.verify:
         flash.verify(firmware_bin)
-    elif operation == 'detect':
+    if args.detect:
         flash.detect()
-    elif operation == 'erase':
+    if args.erase:
         flash.erase()
+    if args.start_app:
+        flash.start_app()
+    if args.detect:
+        flash.detect()
 
     # close log file if used
     flash.close_logger()
@@ -505,4 +568,4 @@ if __name__ == "__main__":
         flasher.usage()
         sys.exit(2)
     else:
-        main(sys.argv[1:], flasher)
+        __main(sys.argv[1:], flasher)
