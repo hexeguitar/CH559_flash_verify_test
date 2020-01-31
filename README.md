@@ -16,8 +16,8 @@ At the moment there is a problem with verifying the firmware image after writing
 * usb_dump_parsed.txt - file above parsed through the python parser to make the data leasier ot compare with the log file created by the wchflasher script. Detects commands and shows read/write packets.
 
 ### Assuming that sdcc is installed and in PATH.
-
-## Scripts
+------
+## Scripts:
 ### _scripts/gen_data.py_  
 Generates a _const uint8_t_ array with required length.  
 Usage (from the projects root folder):  
@@ -43,12 +43,17 @@ and save it as array.h file
 `python3 gen_data.py --lst -l 8192 -o array.h`  
 generate an array in size of 8192 bytes, populated with zeros and save it as array.h file    
 `python3 gen_data.py -v 0 -l 8192 -o array.h`  
+
+------
 ### _scripts/print_bin_size.py_
 Prints out the size of the input bin file in bytes. Use at the end of compilation process.
 Usage (from the projects root folder):
 `python3 scripts/print_bin_size.oy -i <input file>`
+------
 ### _linux_ch55x_install_udev_rules.sh_
 Installs required for the CH55x chips udev rules on the Linux systems.
+
+------
 ### _scripts/chflasher.py_
 The main flash programming and diagnostic script.   
 Usage (from the projects root folder):  
@@ -87,9 +92,18 @@ Identify the chip and the bootloader version:
 Normally when the --log option is used MCU will stay in the bootloader mode, to exit the bootloader and start the application use:  
 `python3 chflasher.py -s`  
 
+------
+### _tests/usb_parser.py_  
+Parses the exported json USB data packets and formats in similar way the chflasher script is generating the log files.  
+Usage:  
+`usb_parser [-h] -i INPUT -o OUTPUT`  
 
-### test.sh  
-Generates test firmware:  
+Example:  
+`usb_parser [-h] -i wch_app_usb_dump.json -o usb_data_parsed-txt`    
+
+------
+### _test.sh_  
+Generates test firmware, compiles it, tries to flash and writes an usb.log file:  
 Usage:   
 `./test.sh 8BIT_VALUE`  
 
