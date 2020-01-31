@@ -4,7 +4,7 @@ There is still a problem with veryfing the flash content above ~12k range in the
 I have created this project to automate the test procedures using a few useful bash and python scripts.
 
 The main part, the python flash script is based on work of Aaron Christopel (https://ATCnetz.de).  
-I have rewritten the it to add more options, especially usb logging features which hopefully will help with solving the issue.  
+I have rewritten it to add more options, especially usb logging features which hopefully will help with solving the issue.  
 
 The main idea for the test is to generate a compiled bin file with sort of controlled length. To achieve that there is python script that generates long _const uint8_t_ arrays that are included in the main file. The values can be random, increasing or just a one constant integer.
 
