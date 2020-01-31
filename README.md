@@ -46,9 +46,11 @@ generate an array in size of 8192 bytes, populated with zeros and save it as arr
 
 ------
 ### _scripts/print_bin_size.py_  
+
 Prints out the size of the input bin file in bytes. Use at the end of compilation process.
-Usage (from the projects root folder):
+Usage (from the projects root folder):  
 `python3 scripts/print_bin_size.oy -i <input file>`  
+
 ------
 ### _linux_ch55x_install_udev_rules.sh_
 Installs required for the CH55x chips udev rules on the Linux systems.
